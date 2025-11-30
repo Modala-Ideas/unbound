@@ -6,6 +6,7 @@ import 'package:unbound/screens/settings_screen.dart';
 import 'package:unbound/services/apps_service.dart';
 import 'package:unbound/services/wallpaper_service.dart';
 import 'package:unbound/utils/method_channel_helper.dart';
+import 'package:unbound/widgets/favorites_dock.dart';
 
 void main() {
   WidgetsFlutterBinding.ensureInitialized();
@@ -165,6 +166,14 @@ class _LauncherHomeState extends State<LauncherHome> {
                     ],
                   ),
                 ),
+                // Favorites Dock
+                Positioned(
+                  bottom: 100,
+                  left: 0,
+                  right: 0,
+                  child: Center(child: const FavoritesDock()),
+                ),
+                // Hint indicator at bottom
                 Positioned(
                   bottom: 40,
                   left: 0,

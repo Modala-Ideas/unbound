@@ -1,7 +1,9 @@
+import 'dart:io';
 import 'dart:typed_data';
 import 'package:flutter/material.dart';
 import 'package:flutter_device_apps/flutter_device_apps.dart';
 import 'package:unbound/services/apps_service.dart';
+import 'package:unbound/services/wallpaper_service.dart';
 
 /// Full-screen app drawer showing all installed apps
 class AppDrawerScreen extends StatefulWidget {
@@ -24,6 +26,7 @@ class _AppDrawerScreenState extends State<AppDrawerScreen>
   final TextEditingController _searchController = TextEditingController();
   final FocusNode _searchFocusNode = FocusNode();
   TabController? _tabController;
+  String? _wallpaperPath;
 
   @override
   void initState() {
@@ -34,6 +37,7 @@ class _AppDrawerScreenState extends State<AppDrawerScreen>
       _isLoading = false;
     }
     _loadApps();
+    _loadWallpaper();
 
     // Auto-focus search field
     WidgetsBinding.instance.addPostFrameCallback((_) {
@@ -72,6 +76,16 @@ class _AppDrawerScreenState extends State<AppDrawerScreen>
     }
   }
 
+  Future<void> _loadWallpaper() async {
+    final wallpaperService = WallpaperService();
+    final path = await wallpaperService.getCurrentWallpaperPath();
+    if (mounted) {
+      setState(() {
+        _wallpaperPath = path;
+      });
+    }
+  }
+
   void _filterApps(String query) {
     setState(() {
       if (query.isEmpty) {
@@ -101,76 +115,104 @@ class _AppDrawerScreenState extends State<AppDrawerScreen>
     final bool hasWorkApps = _workApps.isNotEmpty;
 
     return Scaffold(
-      backgroundColor: Colors.black.withOpacity(0.8),
-      body: SafeArea(
-        child: Column(
-          children: [
-            // Search Bar
-            Padding(
-              padding: const EdgeInsets.all(16.0),
-              child: TextField(
-                controller: _searchController,
-                focusNode: _searchFocusNode,
-                onChanged: _filterApps,
-                style: const TextStyle(color: Colors.white, fontSize: 18),
-                decoration: InputDecoration(
-                  hintText: 'Search apps...',
-                  hintStyle: TextStyle(color: Colors.white.withOpacity(0.5)),
-                  prefixIcon: const Icon(Icons.search, color: Colors.white),
-                  suffixIcon: _searchController.text.isNotEmpty
-                      ? IconButton(
-                          icon: const Icon(Icons.clear, color: Colors.white),
-                          onPressed: () {
-                            _searchController.clear();
-                            _filterApps('');
-                          },
-                        )
-                      : null,
-                  filled: true,
-                  fillColor: Colors.white.withOpacity(0.1),
-                  border: OutlineInputBorder(
-                    borderRadius: BorderRadius.circular(12),
-                    borderSide: BorderSide.none,
-                  ),
-                  contentPadding: const EdgeInsets.symmetric(
-                    horizontal: 16,
-                    vertical: 12,
+      backgroundColor: Colors.transparent,
+      resizeToAvoidBottomInset: false,
+      extendBodyBehindAppBar: true,
+      body: Stack(
+        fit: StackFit.expand,
+        children: [
+          // Wallpaper background
+          if (_wallpaperPath != null)
+            Image.file(
+              File(_wallpaperPath!),
+              fit: BoxFit.cover,
+              errorBuilder: (context, error, stackTrace) {
+                return Container(color: Colors.black.withOpacity(0.8));
+              },
+            )
+          else
+            Container(color: Colors.black.withOpacity(0.8)),
+
+          // Dark overlay for readability
+          Container(color: Colors.black.withOpacity(0.8)),
+
+          // Content
+          SafeArea(
+            child: Column(
+              children: [
+                // Search Bar
+                Padding(
+                  padding: const EdgeInsets.all(16.0),
+                  child: TextField(
+                    controller: _searchController,
+                    focusNode: _searchFocusNode,
+                    onChanged: _filterApps,
+                    style: const TextStyle(color: Colors.white, fontSize: 18),
+                    decoration: InputDecoration(
+                      hintText: 'Search apps...',
+                      hintStyle: TextStyle(
+                        color: Colors.white.withOpacity(0.5),
+                      ),
+                      prefixIcon: const Icon(Icons.search, color: Colors.white),
+                      suffixIcon: _searchController.text.isNotEmpty
+                          ? IconButton(
+                              icon: const Icon(
+                                Icons.clear,
+                                color: Colors.white,
+                              ),
+                              onPressed: () {
+                                _searchController.clear();
+                                _filterApps('');
+                              },
+                            )
+                          : null,
+                      filled: true,
+                      fillColor: Colors.white.withOpacity(0.1),
+                      border: OutlineInputBorder(
+                        borderRadius: BorderRadius.circular(12),
+                        borderSide: BorderSide.none,
+                      ),
+                      contentPadding: const EdgeInsets.symmetric(
+                        horizontal: 16,
+                        vertical: 12,
+                      ),
+                    ),
                   ),
                 ),
-              ),
-            ),
 
-            // TabBar (only if work apps exist)
-            if (hasWorkApps && _tabController != null)
-              TabBar(
-                controller: _tabController,
-                labelColor: Colors.white,
-                unselectedLabelColor: Colors.white.withOpacity(0.6),
-                indicatorColor: Colors.white,
-                tabs: const [
-                  Tab(text: 'Personal'),
-                  Tab(text: 'Work'),
-                ],
-              ),
+                // TabBar (only if work apps exist)
+                if (hasWorkApps && _tabController != null)
+                  TabBar(
+                    controller: _tabController,
+                    labelColor: Colors.white,
+                    unselectedLabelColor: Colors.white.withOpacity(0.6),
+                    indicatorColor: Colors.white,
+                    tabs: const [
+                      Tab(text: 'Personal'),
+                      Tab(text: 'Work'),
+                    ],
+                  ),
 
-            // Apps grid
-            Expanded(
-              child: _isLoading
-                  ? const Center(
-                      child: CircularProgressIndicator(color: Colors.white),
-                    )
-                  : hasWorkApps && _tabController != null
-                  ? TabBarView(
-                      controller: _tabController,
-                      children: [
-                        _buildAppGrid(_filteredApps),
-                        _buildWorkAppGrid(_filteredWorkApps),
-                      ],
-                    )
-                  : _buildAppGrid(_filteredApps),
+                // Apps grid
+                Expanded(
+                  child: _isLoading
+                      ? const Center(
+                          child: CircularProgressIndicator(color: Colors.white),
+                        )
+                      : hasWorkApps && _tabController != null
+                      ? TabBarView(
+                          controller: _tabController,
+                          children: [
+                            _buildAppGrid(_filteredApps),
+                            _buildWorkAppGrid(_filteredWorkApps),
+                          ],
+                        )
+                      : _buildAppGrid(_filteredApps),
+                ),
+              ],
             ),
-          ],
-        ),
+          ),
+        ],
       ),
     );
   }
