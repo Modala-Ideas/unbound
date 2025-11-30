@@ -1,10 +1,12 @@
-import 'package:flutter_device_apps/flutter_device_apps.dart';
 import 'package:flutter/foundation.dart';
+import 'package:flutter/services.dart';
+import 'package:flutter_device_apps/flutter_device_apps.dart';
 
 /// Service to fetch and manage installed apps
 class AppsService {
   static List<AppInfo>? _cachedApps;
   static List<AppInfo>? get cachedApps => _cachedApps;
+  static const platform = MethodChannel('com.modalaideas.unbound/launcher');
 
   /// Get all installed apps (with launch intent)
   Future<List<AppInfo>> getAllApps({bool forceRefresh = false}) async {
@@ -25,6 +27,24 @@ class AppsService {
       return apps;
     } catch (e) {
       debugPrint('Error fetching apps: $e');
+      return [];
+    }
+  }
+
+  /// Get work profile apps
+  Future<List<Map<String, dynamic>>> getWorkApps() async {
+    try {
+      final List<dynamic>? workAppsRaw = await platform.invokeListMethod(
+        'getWorkApps',
+      );
+      if (workAppsRaw != null) {
+        return workAppsRaw
+            .map((app) => Map<String, dynamic>.from(app as Map))
+            .toList();
+      }
+      return [];
+    } catch (e) {
+      debugPrint('Error fetching work apps: $e');
       return [];
     }
   }
