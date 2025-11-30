@@ -1,11 +1,12 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:unbound/screens/app_drawer_screen.dart';
+import 'package:unbound/services/apps_service.dart';
 import 'package:unbound/utils/method_channel_helper.dart';
 
 void main() {
   WidgetsFlutterBinding.ensureInitialized();
-  
+
   // Set system UI overlay style for edge-to-edge experience
   SystemChrome.setSystemUIOverlayStyle(
     const SystemUiOverlayStyle(
@@ -15,13 +16,14 @@ void main() {
       systemNavigationBarIconBrightness: Brightness.light,
     ),
   );
-  
+
   // Enable edge-to-edge mode
-  SystemChrome.setEnabledSystemUIMode(
-    SystemUiMode.edgeToEdge,
-  );
-  
+  SystemChrome.setEnabledSystemUIMode(SystemUiMode.edgeToEdge);
+
   runApp(const UnboundApp());
+
+  // Preload apps in background
+  AppsService().getAllApps();
 }
 
 class UnboundApp extends StatelessWidget {
@@ -31,10 +33,7 @@ class UnboundApp extends StatelessWidget {
   Widget build(BuildContext context) {
     return MaterialApp(
       title: 'Unbound',
-      theme: ThemeData(
-        useMaterial3: true,
-        brightness: Brightness.dark,
-      ),
+      theme: ThemeData(useMaterial3: true, brightness: Brightness.dark),
       debugShowCheckedModeBanner: false,
       home: const LauncherHome(),
     );
@@ -50,31 +49,36 @@ class LauncherHome extends StatelessWidget {
       backgroundColor: Colors.transparent,
       extendBodyBehindAppBar: true,
       body: GestureDetector(
+        behavior: HitTestBehavior.translucent,
         // Swipe up to open app drawer
         onVerticalDragEnd: (details) {
           // Swipe up (negative velocity)
-          if (details.primaryVelocity != null && details.primaryVelocity! < -500) {
+          if (details.primaryVelocity != null &&
+              details.primaryVelocity! < -500) {
             Navigator.of(context).push(
               PageRouteBuilder(
                 pageBuilder: (context, animation, secondaryAnimation) =>
                     const AppDrawerScreen(),
-                transitionsBuilder: (context, animation, secondaryAnimation, child) {
-                  const begin = Offset(0.0, 1.0);
-                  const end = Offset.zero;
-                  const curve = Curves.easeOut;
-                  var tween = Tween(begin: begin, end: end).chain(
-                    CurveTween(curve: curve),
-                  );
-                  return SlideTransition(
-                    position: animation.drive(tween),
-                    child: child,
-                  );
-                },
+                transitionsBuilder:
+                    (context, animation, secondaryAnimation, child) {
+                      const begin = Offset(0.0, 1.0);
+                      const end = Offset.zero;
+                      const curve = Curves.easeOut;
+                      var tween = Tween(
+                        begin: begin,
+                        end: end,
+                      ).chain(CurveTween(curve: curve));
+                      return SlideTransition(
+                        position: animation.drive(tween),
+                        child: child,
+                      );
+                    },
               ),
             );
           }
           // Swipe down (positive velocity) - expand notifications
-          else if (details.primaryVelocity != null && details.primaryVelocity! > 500) {
+          else if (details.primaryVelocity != null &&
+              details.primaryVelocity! > 500) {
             MethodChannelHelper.expandNotificationsPanel();
           }
         },
@@ -105,7 +109,7 @@ class LauncherHome extends StatelessWidget {
                 ],
               ),
             ),
-            
+
             // Hint indicator at bottom
             Positioned(
               bottom: 40,

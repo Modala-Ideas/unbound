@@ -8,14 +8,15 @@ import 'dart:async';
 import 'dart:typed_data';
 
 class LauncherAssist {
-  static const MethodChannel _channel = const MethodChannel('launcher_assist');
+  static const MethodChannel _channel = MethodChannel('launcher_assist');
 
   /// Returns a list of apps installed on the user's device
   static Future<List<AppInfo>> getAllApps() async {
-    List<dynamic>? data =
-        await _channel.invokeMethod<List<dynamic>>('getAllApps');
-    List<Map<String, dynamic>> allApps = data
-        !.cast<Map<dynamic, dynamic>>()
+    List<dynamic>? data = await _channel.invokeMethod<List<dynamic>>(
+      'getAllApps',
+    );
+    List<Map<String, dynamic>> allApps = data!
+        .cast<Map<dynamic, dynamic>>()
         .map((data) => data.cast<String, dynamic>())
         .toList();
     List<AppInfo> toReturn = allApps
@@ -47,28 +48,31 @@ class LauncherAssist {
 
   // it looked for /storage/emulated/0/Android/data/com.example.swiftlauncher/files    /data/user/0/com.example.swiftlauncher/cache/image_picker799247186.jpg
   static Future<Uint8List?> setWallpaper(int i, String path) async {
-    String str = await _channel
-        .invokeMethod('wallpaper', {'i': i.toString(), 'path': path});
+    String str = await _channel.invokeMethod('wallpaper', {
+      'i': i.toString(),
+      'path': path,
+    });
     log("LOCKSCREEN ANSWER IS $str");
     if (i == 1 && str == "result") return await getWallpaper();
     return null;
   }
 
   static Stream<dynamic> handlesCREENChanges() {
-    const EventChannel _stream = EventChannel('screen_status');
+    const EventChannel stream = EventChannel('screen_status');
 
-    return _stream.receiveBroadcastStream();
+    return stream.receiveBroadcastStream();
   }
 
   static Stream<dynamic> newAppListener() {
-    const EventChannel _stream = EventChannel('updatedApps');
+    const EventChannel stream = EventChannel('updatedApps');
 
-    return _stream.receiveBroadcastStream();
+    return stream.receiveBroadcastStream();
   }
 
   static Future<AppInfo> getAppInfo(String pkgName) async {
     Map<String, dynamic> dd = Map.from(
-        await _channel.invokeMethod("getAppInfo", {"package": pkgName}));
+      await _channel.invokeMethod("getAppInfo", {"package": pkgName}),
+    );
     return AppInfo.fromMap(dd);
   }
 
@@ -100,12 +104,14 @@ class LauncherAssist {
   // }
 
   static Future<Uint8List> loadIcon(String iconpack, String iconPackage) async {
-    Uint8List data = await _channel
-        .invokeMethod("getIcon", {"pckg": iconPackage, "key": iconpack});
+    Uint8List data = await _channel.invokeMethod("getIcon", {
+      "pckg": iconPackage,
+      "key": iconpack,
+    });
     return data;
   }
 
-  static openNotificationShader() {
+  static void openNotificationShader() {
     _channel.invokeMethod("expand");
   }
 
@@ -136,7 +142,7 @@ class LauncherAssist {
 
   static void initAppsChangeListener() {
     _channel.invokeMethod("appChangeResult").then((value) {
-      log("App installed " + value.toString());
+      log("App installed $value");
     });
   }
 
@@ -178,7 +184,7 @@ class AppInfo {
   AppInfo(this.package, this.label, this.icon);
 
   AppInfo.fromMap(Map<String, dynamic> data)
-      : package = data['package'],
-        label = data['label'],
-        icon = data['icon'];
+    : package = data['package'],
+      label = data['label'],
+      icon = data['icon'];
 }

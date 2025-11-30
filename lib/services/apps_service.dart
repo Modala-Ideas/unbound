@@ -1,19 +1,27 @@
-import 'package:device_apps/device_apps.dart';
+import 'package:flutter_device_apps/flutter_device_apps.dart';
 import 'package:flutter/foundation.dart';
 
 /// Service to fetch and manage installed apps
 class AppsService {
+  static List<AppInfo>? _cachedApps;
+  static List<AppInfo>? get cachedApps => _cachedApps;
+
   /// Get all installed apps (with launch intent)
-  Future<List<Application>> getAllApps() async {
+  Future<List<AppInfo>> getAllApps({bool forceRefresh = false}) async {
+    if (_cachedApps != null && !forceRefresh) {
+      return _cachedApps!;
+    }
+
     try {
-      List<Application> apps = await DeviceApps.getInstalledApplications(
-        includeAppIcons: true,
-        includeSystemApps: false,
-        onlyAppsWithLaunchIntent: true,
+      List<AppInfo> apps = await FlutterDeviceApps.listApps(
+        includeIcons: true,
+        includeSystem: true,
+        onlyLaunchable: true,
       );
-      
+
       // Sort alphabetically
-      apps.sort((a, b) => a.appName.compareTo(b.appName));
+      apps.sort((a, b) => (a.appName ?? '').compareTo(b.appName ?? ''));
+      _cachedApps = apps;
       return apps;
     } catch (e) {
       debugPrint('Error fetching apps: $e');
@@ -24,7 +32,7 @@ class AppsService {
   /// Launch an app by package name
   Future<bool> launchApp(String packageName) async {
     try {
-      bool launched = await DeviceApps.openApp(packageName);
+      bool launched = await FlutterDeviceApps.openApp(packageName);
       return launched;
     } catch (e) {
       debugPrint('Error launching app $packageName: $e');
@@ -33,9 +41,12 @@ class AppsService {
   }
 
   /// Get app info for a specific package
-  Future<Application?> getAppInfo(String packageName) async {
+  Future<AppInfo?> getAppInfo(String packageName) async {
     try {
-      Application? app = await DeviceApps.getApp(packageName, true);
+      AppInfo? app = await FlutterDeviceApps.getApp(
+        packageName,
+        includeIcon: true,
+      );
       return app;
     } catch (e) {
       debugPrint('Error getting app info for $packageName: $e');

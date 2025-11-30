@@ -1,5 +1,5 @@
 import 'package:flutter/material.dart';
-import 'package:device_apps/device_apps.dart';
+import 'package:flutter_device_apps/flutter_device_apps.dart';
 import 'package:unbound/services/apps_service.dart';
 
 /// Full-screen app drawer showing all installed apps
@@ -12,17 +12,22 @@ class AppDrawerScreen extends StatefulWidget {
 
 class _AppDrawerScreenState extends State<AppDrawerScreen> {
   final AppsService _appsService = AppsService();
-  List<Application> _apps = [];
+  List<AppInfo> _apps = [];
   bool _isLoading = true;
 
   @override
   void initState() {
     super.initState();
+    if (AppsService.cachedApps != null) {
+      _apps = AppsService.cachedApps!;
+      _isLoading = false;
+    }
     _loadApps();
   }
 
   Future<void> _loadApps() async {
     final apps = await _appsService.getAllApps();
+    debugPrint('AppDrawer: Loaded ${apps.length} apps');
     setState(() {
       _apps = apps;
       _isLoading = false;
@@ -32,7 +37,7 @@ class _AppDrawerScreenState extends State<AppDrawerScreen> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      backgroundColor: Colors.black.withOpacity(0.95),
+      backgroundColor: Colors.black.withOpacity(0.8),
       body: SafeArea(
         child: Column(
           children: [
@@ -57,7 +62,7 @@ class _AppDrawerScreenState extends State<AppDrawerScreen> {
                 ],
               ),
             ),
-            
+
             // Apps grid
             Expanded(
               child: _isLoading
@@ -66,19 +71,23 @@ class _AppDrawerScreenState extends State<AppDrawerScreen> {
                     )
                   : GridView.builder(
                       padding: const EdgeInsets.all(16),
-                      gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
-                        crossAxisCount: 4,
-                        childAspectRatio: 0.85,
-                        crossAxisSpacing: 16,
-                        mainAxisSpacing: 16,
-                      ),
+                      gridDelegate:
+                          const SliverGridDelegateWithFixedCrossAxisCount(
+                            crossAxisCount: 4,
+                            childAspectRatio: 0.75,
+                            crossAxisSpacing: 16,
+                            mainAxisSpacing: 16,
+                          ),
                       itemCount: _apps.length,
                       itemBuilder: (context, index) {
                         final app = _apps[index];
                         return _AppItem(
                           app: app,
                           onTap: () async {
-                            await _appsService.launchApp(app.packageName);
+                            final packageName = app.packageName;
+                            if (packageName != null) {
+                              await _appsService.launchApp(packageName);
+                            }
                           },
                         );
                       },
@@ -93,51 +102,47 @@ class _AppDrawerScreenState extends State<AppDrawerScreen> {
 
 /// Individual app item widget
 class _AppItem extends StatelessWidget {
-  final Application app;
+  final AppInfo app;
   final VoidCallback onTap;
 
-  const _AppItem({
-    required this.app,
-    required this.onTap,
-  });
+  const _AppItem({required this.app, required this.onTap});
 
   @override
   Widget build(BuildContext context) {
     return InkWell(
       onTap: onTap,
+      onLongPress: () {
+        // Handle long press (e.g., show app info or uninstall option)
+        debugPrint('Long press on ${app.appName}');
+      },
+      onSecondaryTap: () {
+        // Handle right click (desktop)
+        debugPrint('Right click on ${app.appName}');
+      },
+      borderRadius: BorderRadius.circular(12),
       child: Column(
-        mainAxisSize: MainAxisSize.min,
+        mainAxisAlignment: MainAxisAlignment.center,
         children: [
           // App icon
-          Container(
+          SizedBox(
             width: 56,
             height: 56,
-            decoration: BoxDecoration(
-              borderRadius: BorderRadius.circular(12),
-              color: Colors.white.withOpacity(0.1),
-            ),
-            child: ClipRRect(
-              borderRadius: BorderRadius.circular(12),
-              child: app is ApplicationWithIcon
-                  ? Image.memory(
-                      (app as ApplicationWithIcon).icon,
-                      fit: BoxFit.cover,
-                    )
-                  : const Icon(Icons.apps, color: Colors.white, size: 32),
-            ),
+            child: app.iconBytes != null
+                ? Image.memory(app.iconBytes!)
+                : const Icon(Icons.apps, color: Colors.white, size: 32),
           ),
           const SizedBox(height: 8),
-          
+
           // App name
-          Text(
-            app.appName,
-            style: const TextStyle(
-              color: Colors.white,
-              fontSize: 12,
+          Padding(
+            padding: const EdgeInsets.symmetric(horizontal: 4),
+            child: Text(
+              app.appName ?? 'Unknown App',
+              style: const TextStyle(color: Colors.white, fontSize: 12),
+              maxLines: 2,
+              overflow: TextOverflow.ellipsis,
+              textAlign: TextAlign.center,
             ),
-            maxLines: 2,
-            overflow: TextOverflow.ellipsis,
-            textAlign: TextAlign.center,
           ),
         ],
       ),
