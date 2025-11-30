@@ -6,6 +6,7 @@ import 'package:unbound/screens/settings_screen.dart';
 import 'package:unbound/services/apps_service.dart';
 import 'package:unbound/services/wallpaper_service.dart';
 import 'package:unbound/utils/method_channel_helper.dart';
+import 'package:unbound/widgets/dashboard.dart';
 import 'package:unbound/widgets/favorites_dock.dart';
 
 void main() {
@@ -134,38 +135,12 @@ class _LauncherHomeState extends State<LauncherHome> {
             },
             child: Stack(
               children: [
-                Center(
-                  child: Column(
-                    mainAxisAlignment: MainAxisAlignment.center,
-                    children: [
-                      Text(
-                        'Unbound',
-                        style: TextStyle(
-                          color: Colors.white.withOpacity(0.9),
-                          fontSize: 32,
-                          fontWeight: FontWeight.w300,
-                          letterSpacing: 2,
-                        ),
-                      ),
-                      const SizedBox(height: 16),
-                      Text(
-                        'Swipe up for apps',
-                        style: TextStyle(
-                          color: Colors.white.withOpacity(0.6),
-                          fontSize: 14,
-                        ),
-                      ),
-                      const SizedBox(height: 8),
-                      Text(
-                        'Long press for settings',
-                        style: TextStyle(
-                          color: Colors.white.withOpacity(0.4),
-                          fontSize: 12,
-                        ),
-                      ),
-                    ],
-                  ),
-                ),
+                // Dashboard (Weather & Calendar)
+                Positioned(top: 0, left: 0, right: 0, child: const Dashboard()),
+
+                // Center Content (optional, maybe just keep clean or add clock)
+                // For now, we'll remove the big text to let the dashboard shine
+                // and keep the bottom hint.
                 // Favorites Dock
                 Positioned(
                   bottom: 100,
