@@ -76,6 +76,30 @@ class MainActivity : FlutterActivity() {
                         }
                     }.start()
                 }
+                "setWallpaper" -> {
+                    try {
+                        val path = call.argument<String>("path")
+                        if (path != null) {
+                            val wallpaperManager = android.app.WallpaperManager.getInstance(context)
+                            val bitmap = android.graphics.BitmapFactory.decodeFile(path)
+                            wallpaperManager.setBitmap(bitmap)
+                            result.success(true)
+                        } else {
+                            result.error("INVALID_ARGUMENT", "Path is null", null)
+                        }
+                    } catch (e: Exception) {
+                        result.error("ERROR", "Failed to set wallpaper: ${e.message}", null)
+                    }
+                }
+                "clearWallpaper" -> {
+                    try {
+                        val wallpaperManager = android.app.WallpaperManager.getInstance(context)
+                        wallpaperManager.clear()
+                        result.success(true)
+                    } catch (e: Exception) {
+                        result.error("ERROR", "Failed to clear wallpaper: ${e.message}", null)
+                    }
+                }
                 else -> result.notImplemented()
             }
         }

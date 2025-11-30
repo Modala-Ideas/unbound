@@ -1,7 +1,10 @@
+import 'dart:io';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:unbound/screens/app_drawer_screen.dart';
+import 'package:unbound/screens/settings_screen.dart';
 import 'package:unbound/services/apps_service.dart';
+import 'package:unbound/services/wallpaper_service.dart';
 import 'package:unbound/utils/method_channel_helper.dart';
 
 void main() {
@@ -40,91 +43,144 @@ class UnboundApp extends StatelessWidget {
   }
 }
 
-class LauncherHome extends StatelessWidget {
+class LauncherHome extends StatefulWidget {
   const LauncherHome({super.key});
+
+  @override
+  State<LauncherHome> createState() => _LauncherHomeState();
+}
+
+class _LauncherHomeState extends State<LauncherHome> {
+  String? _wallpaperPath;
+
+  @override
+  void initState() {
+    super.initState();
+    _loadWallpaper();
+  }
+
+  Future<void> _loadWallpaper() async {
+    final wallpaperService = WallpaperService();
+    final path = await wallpaperService.getCurrentWallpaperPath();
+    if (mounted) {
+      setState(() {
+        _wallpaperPath = path;
+      });
+    }
+  }
 
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      backgroundColor: Colors.transparent,
+      backgroundColor: Colors.black,
       extendBodyBehindAppBar: true,
-      body: GestureDetector(
-        behavior: HitTestBehavior.translucent,
-        // Swipe up to open app drawer
-        onVerticalDragEnd: (details) {
-          // Swipe up (negative velocity)
-          if (details.primaryVelocity != null &&
-              details.primaryVelocity! < -500) {
-            Navigator.of(context).push(
-              PageRouteBuilder(
-                pageBuilder: (context, animation, secondaryAnimation) =>
-                    const AppDrawerScreen(),
-                transitionsBuilder:
-                    (context, animation, secondaryAnimation, child) {
-                      const begin = Offset(0.0, 1.0);
-                      const end = Offset.zero;
-                      const curve = Curves.easeOut;
-                      var tween = Tween(
-                        begin: begin,
-                        end: end,
-                      ).chain(CurveTween(curve: curve));
-                      return SlideTransition(
-                        position: animation.drive(tween),
-                        child: child,
-                      );
-                    },
-              ),
-            );
-          }
-          // Swipe down (positive velocity) - expand notifications
-          else if (details.primaryVelocity != null &&
-              details.primaryVelocity! > 500) {
-            MethodChannelHelper.expandNotificationsPanel();
-          }
-        },
-        child: Stack(
-          children: [
-            // Main launcher content
-            Center(
-              child: Column(
-                mainAxisAlignment: MainAxisAlignment.center,
-                children: [
-                  Text(
-                    'Unbound',
-                    style: TextStyle(
-                      color: Colors.white.withOpacity(0.9),
-                      fontSize: 32,
-                      fontWeight: FontWeight.w300,
-                      letterSpacing: 2,
-                    ),
-                  ),
-                  const SizedBox(height: 16),
-                  Text(
-                    'Swipe up for apps',
-                    style: TextStyle(
-                      color: Colors.white.withOpacity(0.6),
-                      fontSize: 14,
-                    ),
-                  ),
-                ],
-              ),
-            ),
+      body: Stack(
+        fit: StackFit.expand,
+        children: [
+          // Wallpaper background
+          if (_wallpaperPath != null)
+            Image.file(
+              File(_wallpaperPath!),
+              fit: BoxFit.cover,
+              errorBuilder: (context, error, stackTrace) {
+                return Container(color: Colors.black);
+              },
+            )
+          else
+            Container(color: Colors.black),
 
-            // Hint indicator at bottom
-            Positioned(
-              bottom: 40,
-              left: 0,
-              right: 0,
-              child: Center(
-                child: Icon(
-                  Icons.keyboard_arrow_up_rounded,
-                  color: Colors.white.withOpacity(0.4),
-                  size: 32,
+          // Launcher content
+          GestureDetector(
+            behavior: HitTestBehavior.translucent,
+            // Long press to open settings
+            onLongPress: () {
+              Navigator.of(context)
+                  .push(
+                    MaterialPageRoute(
+                      builder: (context) => const SettingsScreen(),
+                    ),
+                  )
+                  .then((_) => _loadWallpaper());
+            },
+            // Swipe up to open app drawer
+            onVerticalDragEnd: (details) {
+              if (details.primaryVelocity != null &&
+                  details.primaryVelocity! < -500) {
+                Navigator.of(context).push(
+                  PageRouteBuilder(
+                    pageBuilder: (context, animation, secondaryAnimation) =>
+                        const AppDrawerScreen(),
+                    transitionsBuilder:
+                        (context, animation, secondaryAnimation, child) {
+                          const begin = Offset(0.0, 1.0);
+                          const end = Offset.zero;
+                          const curve = Curves.easeOut;
+                          var tween = Tween(
+                            begin: begin,
+                            end: end,
+                          ).chain(CurveTween(curve: curve));
+                          return SlideTransition(
+                            position: animation.drive(tween),
+                            child: child,
+                          );
+                        },
+                  ),
+                );
+              } else if (details.primaryVelocity != null &&
+                  details.primaryVelocity! > 500) {
+                MethodChannelHelper.expandNotificationsPanel();
+              }
+            },
+            child: Stack(
+              children: [
+                Center(
+                  child: Column(
+                    mainAxisAlignment: MainAxisAlignment.center,
+                    children: [
+                      Text(
+                        'Unbound',
+                        style: TextStyle(
+                          color: Colors.white.withOpacity(0.9),
+                          fontSize: 32,
+                          fontWeight: FontWeight.w300,
+                          letterSpacing: 2,
+                        ),
+                      ),
+                      const SizedBox(height: 16),
+                      Text(
+                        'Swipe up for apps',
+                        style: TextStyle(
+                          color: Colors.white.withOpacity(0.6),
+                          fontSize: 14,
+                        ),
+                      ),
+                      const SizedBox(height: 8),
+                      Text(
+                        'Long press for settings',
+                        style: TextStyle(
+                          color: Colors.white.withOpacity(0.4),
+                          fontSize: 12,
+                        ),
+                      ),
+                    ],
+                  ),
                 ),
-              ),
+                Positioned(
+                  bottom: 40,
+                  left: 0,
+                  right: 0,
+                  child: Center(
+                    child: Icon(
+                      Icons.keyboard_arrow_up_rounded,
+                      color: Colors.white.withOpacity(0.4),
+                      size: 32,
+                    ),
+                  ),
+                ),
+              ],
             ),
-          ],
-        ),
+          ),
+        ],
       ),
     );
   }
